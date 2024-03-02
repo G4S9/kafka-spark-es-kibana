@@ -53,6 +53,12 @@ services:
     ports:
       - '5601:5601'
 
+  checkpoint-ownership-fix:
+    image: bash
+    volumes:
+      - spark-checkpoints:/checkpoints
+    command: chown -R 1001:1001 /checkpoints
+
   spark:
     image: bitnami/spark:3.5.0
     ports:
@@ -63,11 +69,14 @@ services:
       - SPARK_MODE=master
     volumes:
       - .:/app
+      - spark-checkpoints:/checkpoints
     depends_on:
       kafka:
         condition: service_healthy
       kibana:
         condition: service_started
+      checkpoint-ownership-fix:
+        condition: service_completed_successfully
 
   spark-worker:
     image: bitnami/spark:3.5.0
@@ -75,5 +84,10 @@ services:
       - .env
     environment:
       - SPARK_MODE=worker
+    volumes:
+      - spark-checkpoints:/checkpoints
     depends_on:
       - spark
+
+volumes:
+  spark-checkpoints:

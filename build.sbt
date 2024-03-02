@@ -1,5 +1,5 @@
 ThisBuild / version := "1.0.0-SNAPSHOT"
-ThisBuild / scalaVersion := "2.12.19"
+ThisBuild / scalaVersion := "2.13.13"
 ThisBuild / organization := "com.g4s9"
 
 lazy val root = (project in file("."))
@@ -7,7 +7,7 @@ lazy val root = (project in file("."))
     name := "kafka-spark-es-kibana"
   )
 
-val sparkVersion = "3.5.0"
+val sparkVersion = "3.2.0"
 
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion,

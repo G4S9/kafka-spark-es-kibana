@@ -1,10 +1,8 @@
 package com.g4s9
 
 import com.g4s9.Schemas.pageViewSchema
-import org.apache.spark.sql.{Dataset, Row, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.elasticsearch.spark.sql.sparkDatasetFunctions
-
 
 object ElasticsearchLoader {
   def main(args: Array[String]): Unit = {
@@ -24,12 +22,16 @@ object ElasticsearchLoader {
       "ES_PORT", throw new RuntimeException("ES_PORT not defined")
     )
 
-    val spark = SparkSession.builder
+    val CHECKPOINT_LOCATION = sys.env.getOrElse(
+      "CHECKPOINT_LOCATION", throw new RuntimeException("CHECKPOINT_LOCATION not defined")
+    )
+
+    val spark = SparkSession.builder()
       .master(SPARK_MASTER_URL)
       .config("es.nodes", ES_NODES)
       .config("es.port", ES_PORT)
       .appName("ElasticsearchLoader")
-      .getOrCreate
+      .getOrCreate()
 
     import spark.implicits._
 
@@ -45,15 +47,13 @@ object ElasticsearchLoader {
 
       .select(from_json(expr("cast(value as string)"), pageViewSchema).as("json"))
       .select("json.*")
-      .withColumn("@timestamp", date_format(timestamp_millis($"ts"), "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"))
+      .withColumn("@timestamp", from_unixtime($"ts" / 1000, "yyyy-MM-dd'T'HH:mm:ss'Z'"))
 
       .writeStream
-      .foreachBatch((batch: Dataset[Row], _: Long) => {
-        batch
-          .saveToEs("spark")
-      })
+      .format("es")
+      .option("checkpointlocation", CHECKPOINT_LOCATION)
+      .start("spark")
 
-      .start()
       .awaitTermination()
   }
 }
